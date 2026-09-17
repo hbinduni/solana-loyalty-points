@@ -202,7 +202,7 @@ Prepared redemptions include a compute-unit limit of 200,000 and a price of 1,00
 
 ### Token display metadata
 
-The public token identity is **Orbit Points (ORBIT)**. Its [metadata JSON](client/public/token/metadata.json) and [PNG logo](client/public/token/orbit-points.png) are hosted in this public repository. Phantom fetches these assets independently of the app and PostgreSQL. Metadata was attached to the existing Devnet mint on 18 September 2026; [verification evidence](docs/verification.md#public-repository-and-token-metadata--18-september-2026) records the finalized transaction and remaining wallet display check.
+The public token identity is **Orbit Points (ORBIT)**. Its [metadata JSON](client/public/token/metadata.json) and [PNG logo](client/public/token/orbit-points.png) are hosted in this public repository. Phantom fetches these assets independently of the app and PostgreSQL. Metadata was attached to the existing Devnet mint on 18 September 2026; [verification evidence](docs/verification.md#public-repository-and-token-metadata--18-september-2026) records the finalized transaction and successful Phantom name, symbol, logo and balance display.
 
 After creating a mint, use the metadata command with `server/.env` configured. It attaches a separate Metaplex metadata account to the existing Token-2022 mint; it does not create another mint or award points.
 
