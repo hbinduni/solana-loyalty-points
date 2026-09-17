@@ -156,4 +156,19 @@ func TestPrepareIssuanceCreatesToken2022AccountAndMint(t *testing.T) {
 	if p.Signature != tx.Signatures[0].String() || p.LastHeight != 100 {
 		t.Fatal("journal omitted transaction identity")
 	}
+
+	redemption, err := client.Prepare(context.Background(), "redeem", owner.PublicKey().String(), 250, "redeem-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	redemptionTx, err := solana.TransactionFromBase64(redemption.Transaction)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if redemptionTx.Message.AccountKeys[0] != authority.PublicKey() || redemptionTx.Message.Header.NumRequiredSignatures != 2 {
+		t.Fatal("redemption must use the app authority as fee payer and require the member signature")
+	}
+	if redemption.Signature != "" || len(redemptionTx.Signatures) != 2 || !redemptionTx.Signatures[0].IsZero() || !redemptionTx.Signatures[1].IsZero() {
+		t.Fatal("prepared redemption must not be signed before member approval")
+	}
 }

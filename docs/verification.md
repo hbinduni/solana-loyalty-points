@@ -86,3 +86,25 @@ Simulation and finalized readback both confirmed the mint account bytes remained
 `make check-all` passed with 21 client tests and 9 metadata-tool tests, TypeScript, Biome, the production client build, Go formatting, vet, race tests and compilation. `make integration` passed. Review identified that the pinned Umi SDK drops per-call simulation commitment; the tool sets the connection commitment explicitly, with a request-level regression test verified failing before the fix and passing afterward.
 
 The initial display check had no token row because the wallet held 0 points. The user then requested more points to verify the metadata. A 500-point award through the merchant API created operation `0dbc5767-abf7-41b5-bfa0-4fe078ad7e64`; its [issuance transaction](https://explorer.solana.com/tx/q4nviGdcA7rQWXNnd5UNSt9E8P7bXMKHJwfDQK3zM9cvqu1xzqAh5uSojk4qqo9ZDhEoTK57LmkJFNGxpbnxHSz?cluster=devnet) was independently verified as finalized with no error. The finalized token balance and Orbit UI both showed 500 points. Native Chrome accessibility and screenshot inspection then confirmed Phantom displayed **Orbit Points**, **500 ORBIT**, and the correct green Orbit logo. Wallet metadata display is verified.
+
+## App-paid redemption fees · 18 September 2026
+
+Orbit now uses the backend authority as fee payer for redemption. The prepared burn is unsigned; the member signs to authorize spending points. The API requires the exact stored message and correct member signature before adding the authority signature, then stores the fully signed transaction and its fee-payer signature before the worker can broadcast it.
+
+`make check-all` and `make integration` passed. Regression tests cover fee-payer selection, unsigned preparation, changed fees/burns/memos/blockhashes, missing or wrong signatures, unexpected signers, trailing data, unauthorized submission, fully signed persistence, stable retries and stale-worker settlement. Independent code review found no blockers.
+
+A live API/Go-SDK test completed at `2026-09-17T19:22:33Z` using a fresh member `EY6YeMvUC6jJtqTd4qpQKSgwTyjFcKjWjxtMSaBdCQ68` with no SOL funding:
+
+| Check | Finalized result |
+| --- | --- |
+| Point balance | 250 → 0 |
+| Member SOL | 0 → 0 lamports |
+| Fee payer | App authority `7twutFoPeiPAiU9rWQotRcK3J26ocv1o7FnbRf9Q8wk6` |
+| Network fee | 10,200 lamports, debited entirely from the authority |
+| Burn operation | `e7472851-ce49-4ac0-825c-7db971045a53` |
+| Claim | Created after finalization |
+| Submission retry | Same transaction signature |
+
+The [sponsored burn](https://explorer.solana.com/tx/2GqvS4VE2CtFAC1hxQmpdsMDpM2F2tPRNBhHHiqLVCMvjCSSWHg1H2r86JqKNUJ6EDkGu3AJirnyRhqvAJP9V55r?cluster=devnet) was independently fetched at finalized commitment with no execution error. Both transaction signatures verified. The authority's transaction balance decrease equalled the network fee; the member's pre/post SOL balances were zero. The ignored `.local/sponsored-redemption.json` retains the test record. This test used the Go SDK, not the Phantom extension.
+
+The fresh Phantom flow also passed. Operation `e8162bf9-3f5f-471b-bf78-ef4e4230513f` finalized with a claim, and Chrome showed **Reward ready**. Independent finalized RPC evidence for the [Phantom sponsored burn](https://explorer.solana.com/tx/59fpjVxqJoxDFC2TLtG69cWqbj3ekAAdPRdpzQpbYBbyur71DGX6wecWb7YzTVVSsrv7Br4Lx4N4w8Gy582h2DFX?cluster=devnet) showed no execution error, 500 → 250 points, and exactly 2,989,600 lamports (0.0029896 SOL) in the member account before and after. The authority was the fee payer and lost exactly the 10,200-lamport fee. The agent opened the approval prompt; wallet confirmation remained with the user.

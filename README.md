@@ -66,7 +66,7 @@ During development, Vite serves the client on port 5173 and proxies `/api` to po
 | Redis | Single-use sign-in challenges (5 minutes), hashed session-token keys mapped to wallets (24 hours), write rate-limit counters (60 seconds), and the reward catalog cache (30 seconds). |
 | Browser | React holds UI and demo state. Local storage retains redemption idempotency keys and operation IDs across retries; the session token is an HttpOnly cookie. Member private keys remain in the wallet. |
 
-The backend holds the merchant’s mint-authority keypair and pays issuance/account-creation fees. Members sign and pay for their own burns. Reward definitions and claim fulfillment are handled off-chain by the API and PostgreSQL.
+The backend holds the merchant’s mint-authority keypair and pays issuance, account-creation and redemption network fees. Members sign to authorize their point burns; they do not need SOL to redeem. Reward definitions and claim fulfillment are handled off-chain by the API and PostgreSQL.
 
 ### How Solana and PostgreSQL work together
 
@@ -94,14 +94,15 @@ sequenceDiagram
     DB-->>API: New request, coffee costs 250 points
     API->>Chain: Read finalized wallet balance
     Chain-->>API: 500 points
-    API->>API: Prepare a burn of 250 points
+    API->>API: Prepare a burn of 250 points with app as fee payer
     API->>DB: Save operation as prepared
     API-->>Member: Unsigned burn transaction
 
     Member->>Member: Approve and sign in wallet
-    Member->>API: Submit signed transaction
-    API->>API: Verify signature and exact transaction message
-    API->>DB: Persist signed bytes and set pending
+    Member->>API: Submit member-signed transaction
+    API->>API: Verify member signature and exact stored message
+    API->>API: Add authority signature to pay network fee
+    API->>DB: Persist fully signed bytes and set pending
     API-->>Member: 202 Accepted, no reward code yet
 
     Worker->>DB: Load pending operation
@@ -128,7 +129,7 @@ Solana provides wallet-controlled points and independently verifiable transactio
 
 1. **Sign in:** the API stores a challenge in Redis; the wallet signs its message. The API consumes the challenge, verifies the Ed25519 signature and creates a session cookie. Sign-in does not submit a chain transaction.
 2. **Earn points:** the merchant sends a purchase reference, wallet, points and UUID idempotency key. The API prepares and authority-signs a transaction that creates the associated token account if needed and mints points. It persists the signed bytes as `pending` and returns `202`; the worker handles submission.
-3. **Redeem:** the API checks the active reward and finalized balance, then stores a `prepared` transaction with explicit compute-budget instructions, the point burn and a unique operation memo. The member wallet signs it. The API verifies the exact stored message and signature, persists the signed transaction as `pending`, and returns `202`. The worker submits it and creates a claim code only after successful finalization.
+3. **Redeem:** the API checks the active reward and finalized balance, then stores a `prepared` transaction with explicit compute-budget instructions, the point burn and a unique operation memo. The authority is the fee payer, but the prepared transaction contains no signatures. The member wallet signs to approve the burn. The API verifies the exact stored message, expected signers and member signature, adds the authority signature, persists the fully signed transaction as `pending`, and returns `202`. The worker submits it and creates a claim code only after successful finalization.
 4. **Collect:** the merchant submits the claim code. A conditional PostgreSQL update records `fulfilled_at` once; repeated or invalid collection attempts return `409`.
 
 The worker runs every 3 seconds and reads up to 100 unsettled operations per pass. It checks chain status, resends the same signed bytes while pending, and persists terminal outcomes. RPC errors leave operations unsettled for a later retry. The visible member app refreshes balance and activity every 6 seconds; demo redemption uses only local React state.
@@ -196,9 +197,9 @@ SOLANA_AUTHORITY_KEYPAIR=../.local/authority.json
 MERCHANT_API_KEY=<a random secret of at least 32 characters>
 ```
 
-Use `openssl rand -hex 32` to generate the merchant secret. `.env` and `.local/` are ignored by Git. The authority pays for issuance and account creation. Members need a little Devnet SOL to redeem points. Wallet Standard wallets must support Devnet, message signing and legacy transaction signing; wallets that rewrite the prepared transaction are rejected.
+Use `openssl rand -hex 32` to generate the merchant secret. `.env` and `.local/` are ignored by Git. Keep the authority funded with Devnet SOL: it pays for issuance, account creation and redemption. Members need points and wallet approval, but no SOL to redeem. Wallet Standard wallets must support Devnet, message signing and legacy transaction signing; wallets that rewrite the prepared transaction are rejected.
 
-Prepared redemptions include a compute-unit limit of 200,000 and a price of 1,000 micro-lamports, capping the priority fee at 200 lamports. This avoids the fee-instruction insertion observed with Phantom while retaining exact-message validation. Price dashes in Phantom do not mean the token balance is empty; these Devnet points have no market price.
+Prepared redemptions include a compute-unit limit of 200,000 and a price of 1,000 micro-lamports, capping the priority fee at 200 lamports. The authority pays both the base fee and priority fee; a normal member redemption requires two signatures. This avoids the fee-instruction insertion observed with Phantom while retaining exact-message validation. Price dashes in Phantom do not mean the token balance is empty; these Devnet points have no market price.
 
 ### Token display metadata
 

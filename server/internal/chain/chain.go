@@ -21,11 +21,15 @@ type Prepared struct {
 	Transaction, Signature string
 	LastHeight             uint64
 }
+type Signed struct {
+	Transaction, Signature string
+}
 type Gateway interface {
 	Ready() bool
 	MintAddress() string
 	Balance(context.Context, string) (uint64, error)
 	Prepare(context.Context, string, string, uint64, string) (Prepared, error)
+	SignRedemption([]byte, string, string) (Signed, error)
 	State(context.Context, string, uint64) (string, error)
 	Send(context.Context, string) error
 }
@@ -142,7 +146,7 @@ func memo(id string) solana.Instruction {
 	return solana.NewInstruction(solana.MemoProgramID, nil, []byte("orbit:"+id))
 }
 
-func BuildBurn(owner, mint solana.PublicKey, amount uint64, id string, hash solana.Hash) (*solana.Transaction, error) {
+func BuildBurn(owner, mint, payer solana.PublicKey, amount uint64, id string, hash solana.Hash) (*solana.Transaction, error) {
 	account, _, err := solana.FindAssociatedTokenAddressWithProgram(owner, mint, token.ProgramID)
 	if err != nil {
 		return nil, err
@@ -155,7 +159,7 @@ func BuildBurn(owner, mint solana.PublicKey, amount uint64, id string, hash sola
 	// records the exact message. This Devnet budget caps the priority fee at 200 lamports.
 	price := compute.NewSetComputeUnitPriceInstruction(1000).Build()
 	limit := compute.NewSetComputeUnitLimitInstruction(200000).Build()
-	return solana.NewTransaction([]solana.Instruction{price, limit, burn, memo(id)}, hash, solana.TransactionPayer(owner))
+	return solana.NewTransaction([]solana.Instruction{price, limit, burn, memo(id)}, hash, solana.TransactionPayer(payer))
 }
 
 func (c *Client) Prepare(ctx context.Context, kind, wallet string, amount uint64, id string) (Prepared, error) {
@@ -174,7 +178,7 @@ func (c *Client) Prepare(ctx context.Context, kind, wallet string, amount uint64
 	var tx *solana.Transaction
 	switch kind {
 	case "redeem":
-		tx, err = BuildBurn(owner, c.Mint, amount, id, hash.Value.Blockhash)
+		tx, err = BuildBurn(owner, c.Mint, c.Authority.PublicKey(), amount, id, hash.Value.Blockhash)
 	case "earn":
 		account, _, e := solana.FindAssociatedTokenAddressWithProgram(owner, c.Mint, token.ProgramID)
 		if e != nil {
@@ -219,23 +223,58 @@ func (c *Client) Prepare(ctx context.Context, kind, wallet string, amount uint64
 	return p, nil
 }
 
-func VerifySigned(expected []byte, encoded string) (string, error) {
+// SignRedemption adds the app's fee-payer signature only after checking the
+// member's approval of the exact message already stored for their operation.
+func (c *Client) SignRedemption(expected []byte, encoded, wallet string) (Signed, error) {
+	if !c.Ready() {
+		return Signed{}, errors.New("Devnet mint is not configured")
+	}
+	owner, err := solana.PublicKeyFromBase58(wallet)
+	if err != nil {
+		return Signed{}, errors.New("invalid member wallet")
+	}
 	raw, err := base64.StdEncoding.DecodeString(encoded)
 	if err != nil || len(raw) > 1232 {
-		return "", errors.New("invalid signed transaction")
+		return Signed{}, errors.New("invalid signed transaction")
 	}
 	tx, err := solana.TransactionFromBytes(raw)
 	if err != nil {
-		return "", errors.New("invalid signed transaction")
+		return Signed{}, errors.New("invalid signed transaction")
 	}
 	message, err := tx.Message.MarshalBinary()
 	if err != nil || !bytes.Equal(expected, message) {
-		return "", errors.New("wallet changed the requested transaction")
+		return Signed{}, errors.New("wallet changed the requested transaction")
 	}
-	if err = tx.VerifySignatures(); err != nil || len(tx.Signatures) != 1 {
-		return "", errors.New("invalid wallet signature")
+	memberIndex := 1
+	if owner == c.Authority.PublicKey() {
+		memberIndex = 0
 	}
-	return tx.Signatures[0].String(), nil
+	if int(tx.Message.Header.NumRequiredSignatures) != memberIndex+1 || len(tx.Signatures) != memberIndex+1 || len(tx.Message.AccountKeys) <= memberIndex || tx.Message.AccountKeys[0] != c.Authority.PublicKey() || tx.Message.AccountKeys[memberIndex] != owner {
+		return Signed{}, errors.New("invalid redemption signers or fee payer")
+	}
+	canonical, err := tx.MarshalBinary()
+	if err != nil || !bytes.Equal(raw, canonical) {
+		return Signed{}, errors.New("invalid signed transaction encoding")
+	}
+	if !tx.Signatures[memberIndex].Verify(owner, message) {
+		return Signed{}, errors.New("invalid wallet signature")
+	}
+	if !tx.Signatures[0].IsZero() && !tx.Signatures[0].Verify(c.Authority.PublicKey(), message) {
+		return Signed{}, errors.New("invalid fee payer signature")
+	}
+	if _, err = tx.PartialSign(func(key solana.PublicKey) *solana.PrivateKey {
+		if key == c.Authority.PublicKey() {
+			return &c.Authority
+		}
+		return nil
+	}); err != nil {
+		return Signed{}, err
+	}
+	if err = tx.VerifySignatures(); err != nil {
+		return Signed{}, err
+	}
+	transaction, err := tx.ToBase64()
+	return Signed{Transaction: transaction, Signature: tx.Signatures[0].String()}, err
 }
 
 func (c *Client) Send(ctx context.Context, encoded string) error {

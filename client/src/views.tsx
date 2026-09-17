@@ -367,7 +367,7 @@ export function HowItWorks({ onConnect }: { onConnect: () => void }) {
           {
             icon: Gift,
             title: "Pick your next good thing",
-            body: "Choose a reward and approve the redemption in your wallet. Redeemed points are burned. You need a little Devnet SOL for the network fee.",
+            body: "Choose a reward and approve the redemption in your wallet. Redeemed points are burned. Orbit pays the network fee, so you don’t need SOL.",
           },
           {
             icon: ShieldCheck,

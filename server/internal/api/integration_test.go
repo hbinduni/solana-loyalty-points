@@ -44,7 +44,7 @@ func (f *testChain) Prepare(_ context.Context, kind, wallet string, amount uint6
 	if kind == "earn" {
 		owner = f.authority.PublicKey()
 	}
-	tx, err := chain.BuildBurn(owner, f.authority.PublicKey(), amount, id, solana.Hash{1})
+	tx, err := chain.BuildBurn(owner, f.authority.PublicKey(), f.authority.PublicKey(), amount, id, solana.Hash{1})
 	if err != nil {
 		return chain.Prepared{}, err
 	}
@@ -62,6 +62,10 @@ func (f *testChain) Prepare(_ context.Context, kind, wallet string, amount uint6
 	raw, err := tx.MarshalBinary()
 	p.Transaction = base64.StdEncoding.EncodeToString(raw)
 	return p, err
+}
+func (f *testChain) SignRedemption(message []byte, encoded, wallet string) (chain.Signed, error) {
+	client := &chain.Client{Mint: f.authority.PublicKey(), Authority: f.authority.PrivateKey}
+	return client.SignRedemption(message, encoded, wallet)
 }
 func (f *testChain) State(_ context.Context, signature string, _ uint64) (string, error) {
 	f.mu.Lock()
@@ -260,7 +264,19 @@ func TestIntegrationRedemptionAndClaim(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = tx.Sign(func(solana.PublicKey) *solana.PrivateKey { return &owner.PrivateKey }); err != nil {
+	if len(tx.Signatures) != 2 || !tx.Signatures[0].IsZero() || !tx.Signatures[1].IsZero() {
+		t.Fatal("prepared redemption must not contain an app signature")
+	}
+	code, _, _ = call(t, server, "POST", "/api/member/operations/"+op.ID+"/submit", map[string]string{"transaction": op.Transaction}, cookie, nil)
+	if code != 400 {
+		t.Fatal("unsigned burn received sponsorship")
+	}
+	if _, err = tx.PartialSign(func(key solana.PublicKey) *solana.PrivateKey {
+		if key == owner.PublicKey() {
+			return &owner.PrivateKey
+		}
+		return nil
+	}); err != nil {
 		t.Fatal(err)
 	}
 	wire, err := tx.MarshalBinary()
@@ -268,9 +284,39 @@ func TestIntegrationRedemptionAndClaim(t *testing.T) {
 		t.Fatal(err)
 	}
 	signed := base64.StdEncoding.EncodeToString(wire)
+	code, _, _ = call(t, server, "POST", "/api/member/operations/"+op.ID+"/submit", map[string]string{"transaction": signed}, other, nil)
+	if code != 404 {
+		t.Fatal("another member submitted a private operation")
+	}
+	unchanged, err := a.Store.Operation(ctx, op.ID, owner.PublicKey().String())
+	if err != nil || unchanged.Status != "prepared" || unchanged.Signature != "" || unchanged.Transaction != op.Transaction {
+		t.Fatal("rejected submissions changed the prepared transaction", err)
+	}
 	code, raw, _ = call(t, server, "POST", "/api/member/operations/"+op.ID+"/submit", map[string]string{"transaction": signed}, cookie, nil)
 	if code != 202 {
 		t.Fatal(code, string(raw))
+	}
+	persisted, err := a.Store.Operation(ctx, op.ID, owner.PublicKey().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	complete, err := solana.TransactionFromBase64(persisted.Transaction)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = complete.VerifySignatures(); err != nil {
+		t.Fatal("journal must contain both signatures before broadcast", err)
+	}
+	if complete.Message.AccountKeys[0] != fake.authority.PublicKey() || persisted.Signature != complete.Signatures[0].String() || complete.Signatures[1] != tx.Signatures[1] {
+		t.Fatal("journal must preserve member approval and track the app-paid transaction")
+	}
+	code, raw, _ = call(t, server, "POST", "/api/member/operations/"+op.ID+"/submit", map[string]string{"transaction": signed}, cookie, nil)
+	if code != 200 {
+		t.Fatal("submission retry failed", code, string(raw))
+	}
+	var resubmitted store.Operation
+	if err = json.Unmarshal(raw, &resubmitted); err != nil || resubmitted.Signature != persisted.Signature {
+		t.Fatal("submission retry changed transaction identity", err)
 	}
 	if err = a.Store.Settle(ctx, op, "expired", uuid.NewString()); err != nil {
 		t.Fatal(err)

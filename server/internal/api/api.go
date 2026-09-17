@@ -235,14 +235,14 @@ func (a *API) submit(c fiber.Ctx) error {
 	if o.Kind != "redeem" {
 		return fiber.NewError(400, "Only redemptions need a member signature")
 	}
-	signature, err := chain.VerifySigned(o.Message, req.Transaction)
+	signed, err := a.Chain.SignRedemption(o.Message, req.Transaction, wallet(c))
 	if err != nil {
 		return fiber.NewError(400, err.Error())
 	}
 	if o.Status != "prepared" {
 		return c.JSON(o)
 	}
-	o, err = a.Store.Submit(c.Context(), o.ID, wallet(c), req.Transaction, signature)
+	o, err = a.Store.Submit(c.Context(), o.ID, wallet(c), signed.Transaction, signed.Signature)
 	if err != nil {
 		return err
 	}

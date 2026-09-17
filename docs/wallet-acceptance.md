@@ -9,7 +9,7 @@ Use the local app at `http://localhost:5173` on the same computer as the running
 - Install or enable the chosen wallet extension in the browser used for testing.
 - Create two dedicated test accounts, A and B, and select Solana Devnet. Keep recovery phrases and private keys inside the wallet.
 - Disable automatic signing or localhost auto-confirm so approval and cancellation can be tested.
-- Supply only account A's public Solana address. The operator will fund its Devnet transaction fees and award 500 test points through the merchant API. Account B can remain unfunded.
+- Supply only account A's public Solana address. The operator will award 500 test points through the merchant API. Orbit pays redemption network fees; neither member account needs SOL.
 - Record browser and extension versions, public addresses, starting balances, and test time when the session starts.
 
 Phantom exposes Testnet Mode and Auto-Confirm on localhost under [Settings → Developer Settings](https://help.phantom.com/articles/28951369255699). Solflare selects Devnet through its [Network setting](https://help.solflare.com/en/articles/6328814-differences-between-mainnet-devnet-and-testnet-and-how-to-switch-between-on-solflare).
@@ -67,3 +67,9 @@ Independent Devnet RPC reads returned `finalized` and `err: null` for both signa
 The first claim reopened with the same code after reload. During the second redemption, the operator observed a persisted pending signature, reloaded, saw Confirming on Solana, then observed the same operation become Reward ready. Both rewards were subsequently collected through the merchant API; duplicate collection returned 409 for each. No further burn was created.
 
 The connected account's zero-balance reward dialog displayed You need 250 more points with Redeem disabled. Disconnect removed the account and private receipts, including after reload. Cancelling a subsequent real Phantom login message left the app signed out and offered a retry. Approving the retry restored the correct account, 0 points and both collected receipts. Direct navigation to the member API was blocked by the browser, so this session does not add a separate HTTP 401 assertion. Account-switch testing was explicitly skipped by the user.
+
+## App-paid redemption fees · 18 September 2026
+
+Redemptions now use the backend authority as fee payer. The member approves the burn; the API validates that approval before adding the authority signature. The earlier completed Phantom runs above used member-paid fees; the new signing flow was verified separately below.
+
+The fresh Phantom flow also passed. Operation `e8162bf9-3f5f-471b-bf78-ef4e4230513f` finalized with a claim, and Chrome showed **Reward ready**. Independent finalized RPC evidence for the [Phantom sponsored burn](https://explorer.solana.com/tx/59fpjVxqJoxDFC2TLtG69cWqbj3ekAAdPRdpzQpbYBbyur71DGX6wecWb7YzTVVSsrv7Br4Lx4N4w8Gy582h2DFX?cluster=devnet) showed no execution error, 500 → 250 points, and exactly 2,989,600 lamports (0.0029896 SOL) in the member account before and after. The authority was the fee payer and lost exactly the 10,200-lamport fee. The agent opened the approval prompt; wallet confirmation remained with the user.

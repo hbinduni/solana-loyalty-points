@@ -426,7 +426,7 @@ export function App() {
           <div {...stylex.props(s.redemptionNote)}>
             {orbit.mode === "demo"
               ? "This uses sample points only. The demo reward cannot be collected in store."
-              : "Approve in your wallet to spend these points. Redemption is final once confirmed on Solana. A small Devnet SOL network fee applies."}
+              : "Approve in your wallet to spend these points. Redemption is final once confirmed on Solana. Orbit pays the network fee. You don’t need SOL."}
           </div>
           {orbit.data?.points === null && (
             <p {...stylex.props(s.dialogError)}>
