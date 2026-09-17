@@ -70,3 +70,19 @@ The real Phantom extension now passes login, rejected login, rejected redemption
 Testing exposed two bugs: polling erased wallet errors, and Phantom added compute-budget instructions to prepared burns, causing strict transaction validation to reject them. The client now preserves action errors separately from refresh errors. The API prepares explicit compute-budget instructions; both accepted Phantom transactions matched the prepared message exactly. Strict message and signature validation remain in place.
 
 `make check-all` passed with 21 client tests and all client/server checks. `make integration` passed against local PostgreSQL and Redis. The [wallet acceptance record](wallet-acceptance.md) contains transaction links, observations and remaining cases. Solflare, mainnet and production deployment remain untested.
+
+## Public repository and token metadata · 18 September 2026
+
+The app and public token assets are published at [hbinduni/solana-loyalty-points](https://github.com/hbinduni/solana-loyalty-points). The initial commit contains 53 source, test, documentation and asset files. Local environment files, keypairs, signed recovery records, test helpers, dependencies and build output are excluded. A scan of the staged files found no matches for the actual local merchant secret, local private-key encodings or common credential patterns.
+
+- Token identity: **Orbit Points (ORBIT)**, with the existing Orbit logo and a Devnet loyalty-point description.
+- Existing mint: `81NcDN9ibRWng57uABVSATcKjn2ZoajJdBANxfgR4e2i`.
+- Separate Metaplex metadata account: `8Jr26sUkSLYphjYNNphvqu6ZSzeR8gT2GkGDmueFiY98`.
+- [Public metadata JSON](https://raw.githubusercontent.com/hbinduni/solana-loyalty-points/main/client/public/token/metadata.json) and [PNG logo](https://raw.githubusercontent.com/hbinduni/solana-loyalty-points/main/client/public/token/orbit-points.png) were fetched successfully without authentication.
+- [Metadata creation transaction](https://explorer.solana.com/tx/2G3ZoSpmk5TcRGDx8BLapvHqDmBdPacQNuJFd4gqnZYZbPPY13tA8Pyr8ksx9DkkSTQEdhUPR9wPp4zrtbYyJ2BV?cluster=devnet): independently verified as finalized with no error.
+
+Simulation and finalized readback both confirmed the mint account bytes remained unchanged, including supply and authorities. Independent RPC decoding confirmed the expected name, symbol and URI. Repeating the same command with `--apply` reported already current and submitted no transaction. The API remained healthy, and the acceptance wallet still held 0 points.
+
+`make check-all` passed with 21 client tests and 9 metadata-tool tests, TypeScript, Biome, the production client build, Go formatting, vet, race tests and compilation. `make integration` passed. Review identified that the pinned Umi SDK drops per-call simulation commitment; the tool sets the connection commitment explicitly, with a request-level regression test verified failing before the fix and passing afterward.
+
+Phantom displayed no token row for the zero-point wallet, so its refreshed label/logo was not visually verified. This result establishes on-chain metadata and public asset availability, not a completed wallet-cache refresh. No additional points were issued for this check.
