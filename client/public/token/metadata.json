@@ -1,0 +1,16 @@
+{
+  "name": "Orbit Points",
+  "symbol": "ORBIT",
+  "description": "Non-transferable loyalty points for Orbit. Earn points with participating merchants and redeem them for rewards. This token is on Solana Devnet for testing and has no monetary value.",
+  "image": "https://raw.githubusercontent.com/hbinduni/solana-loyalty-points/main/client/public/token/orbit-points.png",
+  "external_url": "https://github.com/hbinduni/solana-loyalty-points",
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "https://raw.githubusercontent.com/hbinduni/solana-loyalty-points/main/client/public/token/orbit-points.png",
+        "type": "image/png"
+      }
+    ]
+  }
+}

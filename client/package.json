@@ -1,0 +1,34 @@
+{
+  "name": "@orbit/client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && bun --bun vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "check": "tsc --noEmit && biome check .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@solana/wallet-standard-features": "1.5.0",
+    "@stylexjs/stylex": "0.19.1",
+    "@wallet-standard/app": "1.1.1",
+    "@wallet-standard/base": "1.1.1",
+    "@wallet-standard/features": "1.1.1",
+    "lucide-react": "1.47.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "20.14.5",
+    "@stylexjs/unplugin": "0.19.1",
+    "@types/bun": "1.4.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "7.0.2",
+    "unplugin": "2.3.11",
+    "vite": "8.3.0"
+  }
+}

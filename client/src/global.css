@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&display=swap");
+@layer reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    color: #232b25;
+    background: #f6f7f2;
+    font-family: "DM Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  input {
+    font: inherit;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible {
+    outline: 3px solid #677444;
+    outline-offset: 4px;
+  }
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+  button {
+    color: inherit;
+  }
+  ::selection {
+    background: #d9f27e;
+    color: #232b25;
+  }
+  dialog::backdrop {
+    background: rgb(28 39 29 / 35%);
+    backdrop-filter: blur(4px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: User motion preference overrides atomic component styles. */
+      animation: none !important;
+      /* biome-ignore lint/complexity/noImportantStyles: User motion preference overrides atomic component styles. */
+      transition: none !important;
+      /* biome-ignore lint/complexity/noImportantStyles: User motion preference overrides atomic component styles. */
+      scroll-behavior: auto !important;
+    }
+  }
+}

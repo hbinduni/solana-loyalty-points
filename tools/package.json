@@ -1,0 +1,19 @@
+{
+  "name": "@orbit/tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "metadata": "bun --env-file=../server/.env metadata.ts",
+    "check": "tsc --noEmit && biome check .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "3.4.0",
+    "@metaplex-foundation/umi": "1.5.1",
+    "@metaplex-foundation/umi-bundle-defaults": "1.5.1"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "typescript": "7.0.2"
+  }
+}

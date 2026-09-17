@@ -1,0 +1,28 @@
+name: orbit-loyalty
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: orbit
+      POSTGRES_PASSWORD: orbit_local_only
+      POSTGRES_DB: orbit
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbit -d orbit"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+  redis:
+    image: redis:8-alpine
+    ports: ["127.0.0.1:56379:6379"]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis_data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 15
+volumes:
+  postgres_data:
+  redis_data:

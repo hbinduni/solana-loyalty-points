@@ -1,0 +1,15 @@
+{
+  "name": "orbit-loyalty",
+  "private": true,
+  "packageManager": "bun@1.4.0",
+  "workspaces": ["client", "tools"],
+  "scripts": {
+    "dev": "bun run --cwd client dev",
+    "build": "bun run --cwd client build",
+    "check": "bun run --cwd client check && bun run --cwd tools check",
+    "metadata": "bun run --cwd tools metadata",
+    "format": "bunx biome check --write client",
+    "check:all": "make check-all"
+  },
+  "devDependencies": { "@biomejs/biome": "2.5.14" }
+}
