@@ -21,7 +21,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@happy-dom/global-registrator": "20.14.5",
+    "@happy-dom/global-registrator": "21.0.4",
     "@stylexjs/unplugin": "0.19.1",
     "@types/bun": "1.4.2",
     "@types/react": "19.3.0",
