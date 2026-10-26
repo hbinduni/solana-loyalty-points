@@ -16,3 +16,7 @@ check-all:
 	cd server && test -z "$$(gofmt -l .)" && go vet ./... && go test -race ./... && go build ./...
 integration:
 	cd server && INTEGRATION_TEST=1 go test -race ./internal/api -count=1 -v
+
+.PHONY: code-vuln
+code-vuln: ## Scan dependencies and the selected Go standard library
+	bash scripts/security-go.sh
