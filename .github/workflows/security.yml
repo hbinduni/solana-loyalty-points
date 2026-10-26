@@ -34,8 +34,6 @@ jobs:
   go:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      GOTOOLCHAIN: local
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,3 +43,5 @@ jobs:
           go-version-file: 'server/go.mod'
           cache: false
       - run: make code-vuln
+        env:
+          GOTOOLCHAIN: local
