@@ -1,6 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "github-actions"
+    open-pull-requests-limit: 0
     directory: "/"
     schedule:
       interval: weekly
@@ -11,6 +12,7 @@ updates:
           - minor
           - patch
   - package-ecosystem: "bun"
+    open-pull-requests-limit: 0
     directory: "/"
     schedule:
       interval: weekly
@@ -21,6 +23,7 @@ updates:
           - minor
           - patch
   - package-ecosystem: "gomod"
+    open-pull-requests-limit: 0
     directory: "/server"
     schedule:
       interval: weekly
@@ -31,6 +34,7 @@ updates:
           - minor
           - patch
   - package-ecosystem: "docker-compose"
+    open-pull-requests-limit: 0
     directory: "/"
     schedule:
       interval: weekly
